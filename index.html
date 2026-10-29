@@ -1,354 +1,542 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b0d12">
 <title>SVAKOM SL278H 控制台</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0b0d12;
+    --card: #151922;
+    --card2: #1c2230;
+    --line: #262e3d;
+    --txt: #e6ebf5;
+    --dim: #8b96a8;
+    --acc: #ff3b6b;
+    --acc2: #ff7a9c;
+    --ok: #2fe08a;
+    --warn: #ffb020;
+  }
   body {
-    margin: 0; padding: 14px;
-    font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
-    background: #0a0a0d; color: #e9e9f0;
-    min-height: 100vh; user-select: none;
+    margin: 0; padding: 14px 12px 40px;
+    background: radial-gradient(900px 500px at 50% -10%, #1a2030 0%, var(--bg) 60%);
+    color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Roboto, sans-serif;
+    min-height: 100vh;
+    user-select: none;
   }
-  h1 { font-size: 17px; margin: 0 0 3px; }
-  .sub { font-size: 11px; color: #6b6b7a; margin-bottom: 14px; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  h1 {
+    font-size: 19px; font-weight: 700; margin: 4px 0 2px;
+    letter-spacing: .3px;
+  }
+  .sub { color: var(--dim); font-size: 12px; margin-bottom: 14px; }
   .card {
-    background: #15151b; border: 1px solid #24242e;
-    border-radius: 13px; padding: 14px; margin-bottom: 12px;
+    background: linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
   }
-  button {
-    width: 100%; padding: 15px; font-size: 15px; font-weight: 600;
-    border: none; border-radius: 10px; background: #26262f; color: #fff;
-    margin-bottom: 8px; cursor: pointer; transition: .12s;
+  .row { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    flex: 1;
+    border: 1px solid var(--line);
+    background: #1f2634;
+    color: var(--txt);
+    border-radius: 12px;
+    padding: 13px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .08s, background .15s;
   }
-  button:active { transform: scale(.97); }
-  button.primary { background: #ff3d63; }
-  button.danger { background: #b02338; }
-  button:disabled { opacity: .3; transform: none; }
-  #status {
-    font-size: 12.5px; padding: 10px 12px; border-radius: 9px;
-    background: #1c1c24; color: #9292a3; margin-bottom: 12px;
-    line-height: 1.5; word-break: break-all;
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--acc) 0%, var(--acc2) 100%);
+    border-color: transparent;
+    color: #fff;
   }
-  #status.on { background: #0e2f1d; color: #55dd85; }
-  #status.err { background: #35131a; color: #ff7d92; }
-  .label { font-size: 11.5px; color: #6b6b7a; margin-bottom: 7px; letter-spacing: .3px; }
-  .bigval { font-size: 40px; font-weight: 800; color: #ff3d63; line-height: 1; letter-spacing: -1px; }
-  .bigval small { font-size: 14px; color: #6b6b7a; font-weight: 500; letter-spacing: 0; }
+  .btn.ok {
+    background: linear-gradient(135deg, #17915c 0%, var(--ok) 100%);
+    border-color: transparent; color: #04231a;
+  }
+  .btn.danger {
+    background: #3a1420; border-color: #6b2033; color: #ff8098;
+  }
+  .btn.on {
+    background: linear-gradient(135deg, #17915c 0%, var(--ok) 100%);
+    border-color: transparent; color: #04231a;
+  }
+  .label {
+    font-size: 12px; color: var(--dim); margin: 2px 0 8px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .label b { color: var(--acc2); font-size: 15px; font-weight: 700; }
   input[type=range] {
-    width: 100%; margin: 14px 0 6px; height: 32px;
-    -webkit-appearance: none; background: transparent;
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 34px; background: transparent; margin: 0;
   }
   input[type=range]::-webkit-slider-runnable-track {
-    height: 7px; border-radius: 4px; background: #26262f;
+    height: 10px; border-radius: 6px;
+    background: linear-gradient(90deg, var(--acc) 0%, var(--acc2) var(--pct, 0%), #2a3242 var(--pct, 0%), #2a3242 100%);
   }
   input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 32px; height: 32px;
-    border-radius: 50%; background: #ff3d63; margin-top: -12.5px;
-    box-shadow: 0 0 14px rgba(255,61,99,.6);
+    -webkit-appearance: none; appearance: none;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--acc);
+    margin-top: -8px;
+    box-shadow: 0 2px 10px rgba(255,59,107,.5);
   }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-  .grid button { margin: 0; padding: 12px 0; font-size: 13.5px; }
-  .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
-  .grid5 button { margin: 0; padding: 12px 0; font-size: 13.5px; }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; }
+  .chip {
+    flex: 1 1 0; min-width: 0;
+    padding: 11px 4px; text-align: center;
+    border-radius: 11px; border: 1px solid var(--line);
+    background: #1f2634; color: var(--txt);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .chip.on { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; color: #fff; }
+  .grid8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .grid8 .chip { padding: 14px 4px; font-size: 16px; }
+  .k { font-size: 12px; color: var(--dim); margin-bottom: 7px; }
+  details {
+    background: #0d1016; border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 12px; margin-bottom: 12px;
+  }
+  details summary {
+    font-size: 13px; color: var(--dim); cursor: pointer; outline: none;
+  }
   #log {
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 10px; color: #66667a; background: #060609;
-    padding: 10px; border-radius: 8px; overflow-x: auto;
-    margin: 8px 0 0; max-height: 130px; line-height: 1.6;
+    margin-top: 8px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px; line-height: 1.65;
+    color: #9fb0c9;
+    max-height: 200px; overflow-y: auto;
     white-space: pre-wrap; word-break: break-all;
   }
-  .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #333; margin-right: 5px; vertical-align: middle; }
-  .live.on { background: #55dd85; box-shadow: 0 0 7px #55dd85; animation: bl 1.4s infinite; }
-  @keyframes bl { 50% { opacity: .35; } }
-  .row { display: flex; gap: 8px; }
-  .row > * { flex: 1; }
+  #log .hi { color: var(--ok); }
+  #log .er { color: #ff7a8f; }
+  .stat {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--dim); margin-top: 10px;
+  }
+  .stat span b { color: var(--txt); }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4a5568; margin-right: 5px; }
+  .dot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .timer {
+    font-size: 12px; color: var(--warn); text-align: center;
+    margin-top: 8px; min-height: 16px;
+  }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <h1>SVAKOM SL278H 控制台</h1>
+  <div class="sub">真协议 7 字节 · 无 CRC · FFE0/FFE1</div>
 
-<h1>SVAKOM SL278H 控制台</h1>
-<div class="sub">Web Bluetooth · FFE1 写入 · 1.5s 续命</div>
-
-<div id="status">未连接</div>
-
-<div class="card">
-  <button id="btnConnect" class="primary">连接设备</button>
-  <div class="row">
-    <button id="btnDisconnect" disabled>断开</button>
-    <button id="btnPanic" class="danger" disabled>紧急停止</button>
+  <div class="card">
+    <div class="row">
+      <button class="btn primary" id="btnConnect">连接设备</button>
+      <button class="btn" id="btnDisconnect" disabled>断开</button>
+    </div>
+    <div class="stat">
+      <span><i class="dot" id="dot"></i><b id="devName">未连接</b></span>
+      <span id="keepAliveInfo"></span>
+    </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="label">强度 CMD_SCALE</div>
-  <div class="bigval"><span id="valNum">0</span><small>%</small></div>
-  <input type="range" id="slider" min="0" max="100" value="0" step="1">
-  <div class="grid">
-    <button data-p="0">停</button>
-    <button data-p="25">25%</button>
-    <button data-p="50">50%</button>
-    <button data-p="100">满</button>
+  <div class="card">
+    <div class="label">强度 <b id="valTxt">0%</b></div>
+    <input type="range" id="speed" min="0" max="100" value="0" step="1" style="--pct:0%">
+    <div class="chips" style="margin-top:10px">
+      <button class="chip" data-v="15">15%</button>
+      <button class="chip" data-v="30">30%</button>
+      <button class="chip" data-v="50">50%</button>
+      <button class="chip" data-v="70">70%</button>
+      <button class="chip" data-v="100">满</button>
+    </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="label">振动花样 CMD_VIBRATE（仅震动棒响应）</div>
-  <div class="grid5" id="patternGrid"></div>
-  <div class="label" style="margin-top:12px">花样强度档位 1-5</div>
-  <div class="grid5" id="levelGrid"></div>
-</div>
+  <div class="card">
+    <div class="k">花样模式（1–8，可叠加等级）</div>
+    <div class="grid8" id="patterns"></div>
+    <div class="k" style="margin-top:12px">花样等级</div>
+    <div class="chips" id="levels">
+      <button class="chip" data-l="1">1</button>
+      <button class="chip" data-l="2">2</button>
+      <button class="chip" data-l="3">3</button>
+      <button class="chip" data-l="4">4</button>
+      <button class="chip" data-l="5">5</button>
+    </div>
+  </div>
 
-<div class="card">
-  <div class="label"><span class="live" id="liveDot"></span>日志</div>
-  <pre id="log">就绪，等待连接…</pre>
+  <div class="card">
+    <div class="k">自动巡航</div>
+    <div class="chips">
+      <button class="chip" data-c="wave">波浪</button>
+      <button class="chip" data-c="rise">渐强</button>
+      <button class="chip" data-c="pulse">脉冲</button>
+      <button class="chip" data-c="off">关闭</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">定时运行</div>
+    <div class="chips">
+      <button class="chip" data-t="60">1 分钟</button>
+      <button class="chip" data-t="300">5 分钟</button>
+      <button class="chip" data-t="600">10 分钟</button>
+      <button class="chip" data-t="0">不限时</button>
+    </div>
+    <div class="timer" id="timerText"></div>
+  </div>
+
+  <div class="card">
+    <button class="btn danger" id="btnStop" style="width:100%">■ 紧急停止</button>
+  </div>
+
+  <details>
+    <summary>运行日志（点开查看）</summary>
+    <div id="log"></div>
+  </details>
+
+  <div class="sub" style="text-align:center">
+    仅供已授权设备使用 · 不要在公共场合误触
+  </div>
 </div>
 
 <script>
-/* ============ 协议常量（来自 svakom-ble-ai / bridge.py） ============ */
-const SVC_WRITE = 0xffe0;
-const CHR_WRITE = 0xffe1;   // write-without-response
-const CHR_NOTIFY = 0xffe2;  // notify
-const H = 0x55;
-const KEEPALIVE_MS = 1500;  // 关键：设备超时保护，必须续命
+/* ============ 协议常量（来自 svakom-ble-ai / bridge.py，真机已验证） ============ */
+const SVC        = 0xFFE0;
+const CHR_WRITE  = 0xFFE1;   // write / writeWithoutResponse
+const CHR_NOTIFY = 0xFFE2;
+const KEEPALIVE_MS = 1500;
 
-/* ============ 命令构造 ============ */
-function cmdScale(v) {
-  v = Math.max(0, Math.min(255, v | 0));
-  return new Uint8Array([H, 0x04, 0x00, 0x00, 0x01, v, 0xAA]);
-}
-function cmdScaleStop() {
-  return new Uint8Array([H, 0x04, 0x00, 0x00, 0x00, 0x00, 0xAA]);
-}
-function cmdVibrate(mode, level) {
-  mode = Math.max(1, Math.min(8, mode | 0));
-  level = Math.max(1, Math.min(5, level | 0));
-  return new Uint8Array([H, 0x03, 0x00, 0x00, mode, level, 0x00]);
-}
-
-const hex = u8 => Array.from(u8).map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+// 强度： [55, 04, 00, 00, 01, v, AA]
+const cmdScale = (v) => [0x55, 0x04, 0x00, 0x00, 0x01, (v & 0xFF), 0xAA];
+// 停止： [55, 04, 00, 00, 00, 00, AA]
+const cmdScaleStop = () => [0x55, 0x04, 0x00, 0x00, 0x00, 0x00, 0xAA];
+// 花样： [55, 03, 00, 00, mode, level, 00]
+const cmdVibrate = (mode, level) => [0x55, 0x03, 0x00, 0x00, (mode & 0xFF), (level & 0xFF), 0x00];
 
 /* ============ 状态 ============ */
-let dev = null, chr = null;
-let currentCmd = null;      // 当前需要续命的包
+let device = null, server = null, chrWrite = null, chrNotify = null;
+let currentCmd = null;      // 需要续命的包
 let keepTimer = null;
-let autoStopAt = 0;         // 定时停止时间戳
-let autoStopTimer = null;
+let cruiseTimer = null, cruiseMode = null, cruiseT = 0;
+let durationTimer = null, durEnd = 0;
+let lastWrittenAt = 0;
 
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+const logBox = $('log');
 
-function log(msg) {
-  const t = new Date().toLocaleTimeString('zh-CN', {hour12:false});
-  const lines = $('log').textContent.split('\n');
-  const next = [`${t}  ${msg}`, ...lines].slice(0, 22);
-  $('log').textContent = next.join('\n');
+function log(msg, cls) {
+  const t = new Date().toTimeString().slice(0, 8);
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `[${t}] ${msg}`;
+  logBox.appendChild(line);
+  while (logBox.childNodes.length > 40) logBox.removeChild(logBox.firstChild);
+  logBox.scrollTop = logBox.scrollHeight;
 }
+const hex = (arr) => arr.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-function setStatus(msg, cls) {
-  const el = $('status');
-  el.textContent = msg;
-  el.className = cls || '';
-  $('liveDot').className = 'live' + (cls === 'on' ? ' on' : '');
-}
-
-/* ============ 写入 ============ */
-async function write(u8) {
-  if (!chr) return false;
-  try {
-    await chr.writeValueWithoutResponse(u8);
-    return true;
-  } catch (e) {
-    try {
-      await chr.writeValue(u8);
-      return true;
-    } catch (e2) {
-      log('✗ 写入失败: ' + e2.message);
-      return false;
-    }
-  }
-}
-
-/* ============ 续命循环 ============ */
-function startKeepalive(u8) {
-  currentCmd = u8;
-  if (keepTimer) return;
-  keepTimer = setInterval(async () => {
-    if (!currentCmd) return;
-    await write(currentCmd);
-    log('↻ 续命 ' + hex(currentCmd));
-  }, KEEPALIVE_MS);
-  log('续命已启动 @' + KEEPALIVE_MS + 'ms');
-}
-
-function stopKeepalive() {
-  currentCmd = null;
-  if (keepTimer) { clearInterval(keepTimer); keepTimer = null; log('续命已停止'); }
-  if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null; }
-}
-
-/* ============ 高层操作 ============ */
-async function setStrength(pct, durationSec) {
-  if (!chr) { setStatus('未连接', 'err'); return; }
-  pct = Math.max(0, Math.min(100, pct));
-  if (pct === 0) { await stop(); return; }
-  const v = Math.round(pct * 255 / 100);
-  const u8 = cmdScale(v);
-  log(`📳 强度 ${pct}% → ${hex(u8)}`);
-  const ok = await write(u8);
-  if (ok) {
-    startKeepalive(u8);
-    $('valNum').textContent = pct;
-    $('slider').value = pct;
-    setStatus(`运行中 · 强度 ${pct}%` + (durationSec ? ` · ${durationSec}s 后停` : ''), 'on');
-    if (durationSec) {
-      if (autoStopTimer) clearTimeout(autoStopTimer);
-      autoStopTimer = setTimeout(() => { log('⏱ 到时自动停'); stop(); }, durationSec * 1000);
-    }
-  }
-}
-
-async function setPattern(mode, level) {
-  if (!chr) { setStatus('未连接', 'err'); return; }
-  const u8 = cmdVibrate(mode, level);
-  log(`🌀 花样 ${mode} 档${level} → ${hex(u8)}`);
-  const ok = await write(u8);
-  if (ok) {
-    startKeepalive(u8);
-    setStatus(`运行中 · 花样 ${mode} 档 / 强度 ${level}`, 'on');
-  }
-}
-
-async function stop() {
-  const u8 = cmdScaleStop();
-  log(`⏹ 停止 → ${hex(u8)}`);
-  stopKeepalive();
-  await write(u8);
-  $('valNum').textContent = 0;
-  $('slider').value = 0;
-  setStatus('已停止', 'on');
-}
-
-/* ============ 连接 ============ */
-$('btnConnect').onclick = async () => {
+/* ============ 蓝牙连接 ============ */
+async function connect() {
   if (!navigator.bluetooth) {
-    setStatus('此浏览器不支持 Web Bluetooth。请用 Android Chrome / Edge。', 'err');
+    log('此浏览器不支持 Web Bluetooth。请用 Android Chrome / Edge。', 'er');
+    alert('此浏览器不支持 Web Bluetooth。\n请用 Android Chrome / Edge 打开。');
     return;
   }
   try {
-    setStatus('正在扫描…请在弹窗里选 SL278H');
-    dev = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: 'SL278' }],
-      optionalServices: [SVC_WRITE]
-    }).catch(() => navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: [SVC_WRITE]
-    }));
-
-    log('设备: ' + (dev.name || '(无名)') + ' · ' + dev.id);
-    setStatus('正在连接 GATT…');
-
-    dev.addEventListener('gattserverdisconnected', () => {
-      chr = null;
-      stopKeepalive();
-      $('btnConnect').disabled = false;
-      $('btnDisconnect').disabled = true;
-      $('btnPanic').disabled = true;
-      setStatus('连接已断开', 'err');
-      log('GATT 断开');
+    log('正在扫描设备…');
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: 'SL' }, { namePrefix: 'SVAKOM' }, { namePrefix: 'SV' }],
+      optionalServices: [SVC, 0xFFF0]   // 不声明 AE00：OTA 刷机口永不触碰
     });
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    log(`设备: ${device.name || '(无名)'} · ${device.id.slice(0, 8)}`);
 
-    const server = await dev.gatt.connect();
-    setStatus('已连 GATT，查找 FFE0…');
-    const svc = await server.getPrimaryService(SVC_WRITE);
-    chr = await svc.getCharacteristic(CHR_WRITE);
+    server = await device.gatt.connect();
+    log('GATT 已连接，获取服务…');
 
-    log(`FFE1 属性: write=${!!chr.properties.write} noResp=${!!chr.properties.writeWithoutResponse}`);
-    setStatus('已连接 · FFE0/FFE1 就绪', 'on');
+    const svc = await server.getPrimaryService(SVC);
+    chrWrite = await svc.getCharacteristic(CHR_WRITE);
+    try { chrNotify = await svc.getCharacteristic(CHR_NOTIFY); } catch (e) { chrNotify = null; }
+
+    const p = chrWrite.properties;
+    log(`FFE1 属性: write=${!!p.write} noResp=${!!p.writeWithoutResponse}`, 'hi');
+
     $('btnConnect').disabled = true;
     $('btnDisconnect').disabled = false;
-    $('btnPanic').disabled = false;
+    $('devName').textContent = device.name || 'SL278H';
+    $('dot').classList.add('live');
+    log('已连接 · FFE0/FFE1 就绪', 'hi');
 
-    // 尝试订阅 FFE2 回包
-    try {
-      const noti = await svc.getCharacteristic(CHR_NOTIFY);
-      await noti.startNotifications();
-      noti.addEventListener('characteristicvaluechanged', ev => {
-        log('← FFE2 ' + hex(new Uint8Array(ev.target.value.buffer)));
-      });
-      log('已订阅 FFE2 通知');
-    } catch (e) {
-      log('FFE2 订阅失败（不影响控制）: ' + e.message);
-    }
+    // 首包：发一次 0 强度，确认通道
+    await write(cmdScale(0));
   } catch (e) {
-    log('✗ ' + e.message);
-    setStatus('连接失败：' + e.message, 'err');
+    log('连接失败: ' + (e.message || e), 'er');
+    console.error(e);
   }
-};
+}
 
-$('btnDisconnect').onclick = async () => {
-  await stop();
-  if (dev && dev.gatt.connected) dev.gatt.disconnect();
-};
+function onDisconnect() {
+  stopAllTimers();
+  $('btnConnect').disabled = false;
+  $('btnDisconnect').disabled = true;
+  $('devName').textContent = '已断开';
+  $('dot').classList.remove('live');
+  log('设备已断开', 'er');
+}
 
-$('btnPanic').onclick = () => stop();
+async function disconnect() {
+  stopAllTimers();
+  try { if (device && device.gatt.connected) device.gatt.disconnect(); } catch (e) {}
+}
 
-/* ============ 滑块 ============ */
-const slider = $('slider');
-let slideTimer = null;
-slider.addEventListener('input', () => {
-  $('valNum').textContent = slider.value;
+/* ============ 写入 ============ */
+async function write(cmd) {
+  if (!chrWrite) return;
+  const data = new Uint8Array(cmd);
+  try {
+    if (chrWrite.properties.writeWithoutResponse) {
+      await chrWrite.writeValueWithoutResponse(data);
+    } else {
+      await chrWrite.writeValue(data);
+    }
+    lastWrittenAt = Date.now();
+  } catch (e) {
+    try { await chrWrite.writeValue(data); lastWrittenAt = Date.now(); }
+    catch (e2) { log('写入失败: ' + (e2.message || e2), 'er'); }
+  }
+}
+
+/* ============ 续命 ============ */
+function setKeepAlive() {
+  clearInterval(keepTimer);
+  if (!currentCmd) return;
+  keepTimer = setInterval(() => {
+    if (!chrWrite) return;
+    write(currentCmd);
+  }, KEEPALIVE_MS);
+  $('keepAliveInfo').textContent = `续命 ${KEEPALIVE_MS}ms`;
+}
+
+function clearKeepAlive() {
+  clearInterval(keepTimer);
+  keepTimer = null;
+  $('keepAliveInfo').textContent = '';
+}
+
+/* ============ 强度 ============ */
+function setSpeed(pct) {
+  pct = Math.max(0, Math.min(100, Math.round(pct)));
+  $('speed').value = pct;
+  $('speed').style.setProperty('--pct', pct + '%');
+  $('valTxt').textContent = pct + '%';
+
+  if (pct === 0) {
+    currentCmd = cmdScaleStop();
+    write(currentCmd);
+    clearKeepAlive();
+    log('强度 0%（停止）');
+    return;
+  }
+  const v = Math.round(pct * 255 / 100);
+  currentCmd = cmdScale(v);
+  write(currentCmd);
+  setKeepAlive();
+  log(`📳 强度 ${pct}% → ${hex(currentCmd)}`);
+}
+
+/* ============ 花样 ============ */
+function setPattern(mode, level) {
+  const cmd = cmdVibrate(mode, level);
+  currentCmd = cmd;
+  write(cmd);
+  setKeepAlive();
+  log(`🎛 花样 ${mode} · 等级 ${level} → ${hex(cmd)}`);
+}
+
+/* ============ 停止 ============ */
+async function stop() {
+  stopAllTimers();
+  currentCmd = null;
+  clearKeepAlive();
+  $('valTxt').textContent = '0%';
+  $('speed').value = 0;
+  $('speed').style.setProperty('--pct', '0%');
+  document.querySelectorAll('.chip.on').forEach(el => el.classList.remove('on'));
+
+  // 连发 3 次，防止漏包
+  for (let i = 0; i < 3; i++) {
+    await write(cmdScaleStop());
+    await sleep(60);
+  }
+  log('■ 已停止', 'hi');
+}
+
+function stopAllTimers() {
+  clearInterval(keepTimer); keepTimer = null;
+  clearInterval(cruiseTimer); cruiseTimer = null;
+  cruiseMode = null;
+  clearInterval(durationTimer); durationTimer = null;
+  durEnd = 0;
+  $('timerText').textContent = '';
+  $('keepAliveInfo').textContent = '';
+}
+
+/* ============ 自动巡航 ============ */
+function startCruise(mode) {
+  clearInterval(cruiseTimer);
+  cruiseTimer = null;
+  cruiseMode = mode;
+  cruiseT = 0;
+
+  if (mode === 'off') {
+    document.querySelectorAll('[data-c]').forEach(el => el.classList.remove('on'));
+    log('巡航已关闭');
+    return;
+  }
+  document.querySelectorAll('[data-c]').forEach(el => {
+    el.classList.toggle('on', el.dataset.c === mode);
+  });
+  log('巡航启动: ' + ({ wave: '波浪', rise: '渐强', pulse: '脉冲' }[mode]));
+
+  cruiseTimer = setInterval(() => {
+    if (!chrWrite) return;
+    cruiseT += 400;
+    let pct;
+    if (mode === 'wave') {
+      pct = 50 + 45 * Math.sin(cruiseT / 2600);
+    } else if (mode === 'rise') {
+      const cyc = (cruiseT % 16000) / 16000;
+      pct = 10 + cyc * 85;
+    } else { // pulse
+      const cyc = (cruiseT % 3200) / 3200;
+      pct = cyc < 0.55 ? 85 : 8;
+    }
+    pct = Math.max(0, Math.min(100, Math.round(pct)));
+    $('speed').value = pct;
+    $('speed').style.setProperty('--pct', pct + '%');
+    $('valTxt').textContent = pct + '%';
+    const cmd = cmdScale(Math.round(pct * 255 / 100));
+    currentCmd = cmd;
+    write(cmd);
+  }, 400);
+}
+
+/* ============ 定时运行 ============ */
+function startDuration(sec) {
+  clearInterval(durationTimer);
+  durationTimer = null;
+
+  document.querySelectorAll('[data-t]').forEach(el => {
+    el.classList.toggle('on', Number(el.dataset.t) === sec);
+  });
+
+  if (!sec) {
+    durEnd = 0;
+    $('timerText').textContent = '不限时运行';
+    log('定时: 不限时');
+    return;
+  }
+  durEnd = Date.now() + sec * 1000;
+  log(`定时: ${sec / 60} 分钟后自动停止`);
+
+  const tick = () => {
+    const left = durEnd - Date.now();
+    if (left <= 0) {
+      clearInterval(durationTimer);
+      durationTimer = null;
+      $('timerText').textContent = '已到时 · 自动停止';
+      log('⏱ 到时，自动停止', 'hi');
+      stop();
+      return;
+    }
+    const m = Math.floor(left / 60000);
+    const s = Math.floor((left % 60000) / 1000);
+    $('timerText').textContent = `剩余 ${m}:${String(s).padStart(2, '0')}`;
+  };
+  tick();
+  durationTimer = setInterval(tick, 1000);
+}
+
+/* ============ UI 绑定 ============ */
+$('btnConnect').onclick = connect;
+$('btnDisconnect').onclick = disconnect;
+$('btnStop').onclick = stop;
+
+$('speed').addEventListener('input', (e) => {
+  const pct = Number(e.target.value);
+  $('speed').style.setProperty('--pct', pct + '%');
+  $('valTxt').textContent = pct + '%';
 });
-slider.addEventListener('change', () => {
-  // 拖动结束才发，避免每秒几十包
-  setStrength(parseInt(slider.value));
+$('speed').addEventListener('change', (e) => {
+  startCruise('off');           // 手动拖就退出巡航
+  setSpeed(Number(e.target.value));
 });
 
-/* ============ 快捷强度 ============ */
-document.querySelectorAll('[data-p]').forEach(b => {
-  b.onclick = () => setStrength(parseInt(b.dataset.p));
+document.querySelectorAll('[data-v]').forEach(el => {
+  el.onclick = () => {
+    startCruise('off');
+    document.querySelectorAll('[data-v]').forEach(x => x.classList.remove('on'));
+    el.classList.add('on');
+    setSpeed(Number(el.dataset.v));
+  };
 });
 
-/* ============ 花样按钮 ============ */
-let curLevel = 3;
-const pg = $('patternGrid');
+// 花样按钮
+const patternBox = $('patterns');
 for (let i = 1; i <= 8; i++) {
   const b = document.createElement('button');
+  b.className = 'chip';
   b.textContent = i;
-  b.onclick = () => setPattern(i, curLevel);
-  pg.appendChild(b);
+  b.dataset.p = i;
+  patternBox.appendChild(b);
 }
-const lg = $('levelGrid');
-for (let i = 1; i <= 5; i++) {
-  const b = document.createElement('button');
-  b.textContent = i;
-  if (i === curLevel) b.style.background = '#1c7a45';
-  b.onclick = () => {
-    curLevel = i;
-    [...lg.children].forEach((x, idx) => x.style.background = idx + 1 === i ? '#1c7a45' : '');
-    log('花样档位 → ' + i);
+let curPattern = 1, curLevel = 3;
+document.querySelectorAll('[data-p]').forEach(el => {
+  el.onclick = () => {
+    curPattern = Number(el.dataset.p);
+    document.querySelectorAll('[data-p]').forEach(x => x.classList.remove('on'));
+    el.classList.add('on');
+    setPattern(curPattern, curLevel);
   };
-  lg.appendChild(b);
-}
-
-/* ============ 防息屏 ============ */
-let wakeLock = null;
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      log('✅ 已申请屏幕常亮');
-      wakeLock.addEventListener('release', () => log('⚠️ 屏幕常亮已释放'));
-    }
-  } catch (e) { log('常亮申请失败: ' + e.message); }
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !wakeLock) requestWakeLock();
 });
-requestWakeLock();
+document.querySelectorAll('[data-l]').forEach(el => {
+  el.onclick = () => {
+    curLevel = Number(el.dataset.l);
+    document.querySelectorAll('[data-l]').forEach(x => x.classList.remove('on'));
+    el.classList.add('on');
+    if (currentCmd) setPattern(curPattern, curLevel);
+  };
+});
+document.querySelector('[data-l="3"]').classList.add('on');
 
-log('页面就绪 · 协议已载入（SL278H / 7字节 / 无CRC）');
+document.querySelectorAll('[data-c]').forEach(el => {
+  el.onclick = () => startCruise(el.dataset.c);
+});
+document.querySelectorAll('[data-t]').forEach(el => {
+  el.onclick = () => startDuration(Number(el.dataset.t));
+});
+
+// 切后台提示
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && currentCmd) {
+    log('⚠ 页面切到后台，浏览器可能暂停续命，切回前台会自动恢复', 'er');
+  }
+});
+window.addEventListener('beforeunload', () => { stopAllTimers(); });
+
+log('页面就绪 · 协议已载入（SL278H / 7字节 / 无CRC）', 'hi');
 </script>
 </body>
 </html>
