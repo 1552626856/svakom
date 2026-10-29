@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SVAKOM SL278H 控制台</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 14px;
+    font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+    background: #0a0a0d; color: #e9e9f0;
+    min-height: 100vh; user-select: none;
+  }
+  h1 { font-size: 17px; margin: 0 0 3px; }
+  .sub { font-size: 11px; color: #6b6b7a; margin-bottom: 14px; }
+  .card {
+    background: #15151b; border: 1px solid #24242e;
+    border-radius: 13px; padding: 14px; margin-bottom: 12px;
+  }
+  button {
+    width: 100%; padding: 15px; font-size: 15px; font-weight: 600;
+    border: none; border-radius: 10px; background: #26262f; color: #fff;
+    margin-bottom: 8px; cursor: pointer; transition: .12s;
+  }
+  button:active { transform: scale(.97); }
+  button.primary { background: #ff3d63; }
+  button.danger { background: #b02338; }
+  button:disabled { opacity: .3; transform: none; }
+  #status {
+    font-size: 12.5px; padding: 10px 12px; border-radius: 9px;
+    background: #1c1c24; color: #9292a3; margin-bottom: 12px;
+    line-height: 1.5; word-break: break-all;
+  }
+  #status.on { background: #0e2f1d; color: #55dd85; }
+  #status.err { background: #35131a; color: #ff7d92; }
+  .label { font-size: 11.5px; color: #6b6b7a; margin-bottom: 7px; letter-spacing: .3px; }
+  .bigval { font-size: 40px; font-weight: 800; color: #ff3d63; line-height: 1; letter-spacing: -1px; }
+  .bigval small { font-size: 14px; color: #6b6b7a; font-weight: 500; letter-spacing: 0; }
+  input[type=range] {
+    width: 100%; margin: 14px 0 6px; height: 32px;
+    -webkit-appearance: none; background: transparent;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 7px; border-radius: 4px; background: #26262f;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 32px; height: 32px;
+    border-radius: 50%; background: #ff3d63; margin-top: -12.5px;
+    box-shadow: 0 0 14px rgba(255,61,99,.6);
+  }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .grid button { margin: 0; padding: 12px 0; font-size: 13.5px; }
+  .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  .grid5 button { margin: 0; padding: 12px 0; font-size: 13.5px; }
+  #log {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10px; color: #66667a; background: #060609;
+    padding: 10px; border-radius: 8px; overflow-x: auto;
+    margin: 8px 0 0; max-height: 130px; line-height: 1.6;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #333; margin-right: 5px; vertical-align: middle; }
+  .live.on { background: #55dd85; box-shadow: 0 0 7px #55dd85; animation: bl 1.4s infinite; }
+  @keyframes bl { 50% { opacity: .35; } }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+</style>
+</head>
+<body>
+
+<h1>SVAKOM SL278H 控制台</h1>
+<div class="sub">Web Bluetooth · FFE1 写入 · 1.5s 续命</div>
+
+<div id="status">未连接</div>
+
+<div class="card">
+  <button id="btnConnect" class="primary">连接设备</button>
+  <div class="row">
+    <button id="btnDisconnect" disabled>断开</button>
+    <button id="btnPanic" class="danger" disabled>紧急停止</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="label">强度 CMD_SCALE</div>
+  <div class="bigval"><span id="valNum">0</span><small>%</small></div>
+  <input type="range" id="slider" min="0" max="100" value="0" step="1">
+  <div class="grid">
+    <button data-p="0">停</button>
+    <button data-p="25">25%</button>
+    <button data-p="50">50%</button>
+    <button data-p="100">满</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="label">振动花样 CMD_VIBRATE（仅震动棒响应）</div>
+  <div class="grid5" id="patternGrid"></div>
+  <div class="label" style="margin-top:12px">花样强度档位 1-5</div>
+  <div class="grid5" id="levelGrid"></div>
+</div>
+
+<div class="card">
+  <div class="label"><span class="live" id="liveDot"></span>日志</div>
+  <pre id="log">就绪，等待连接…</pre>
+</div>
+
+<script>
+/* ============ 协议常量（来自 svakom-ble-ai / bridge.py） ============ */
+const SVC_WRITE = 0xffe0;
+const CHR_WRITE = 0xffe1;   // write-without-response
+const CHR_NOTIFY = 0xffe2;  // notify
+const H = 0x55;
+const KEEPALIVE_MS = 1500;  // 关键：设备超时保护，必须续命
+
+/* ============ 命令构造 ============ */
+function cmdScale(v) {
+  v = Math.max(0, Math.min(255, v | 0));
+  return new Uint8Array([H, 0x04, 0x00, 0x00, 0x01, v, 0xAA]);
+}
+function cmdScaleStop() {
+  return new Uint8Array([H, 0x04, 0x00, 0x00, 0x00, 0x00, 0xAA]);
+}
+function cmdVibrate(mode, level) {
+  mode = Math.max(1, Math.min(8, mode | 0));
+  level = Math.max(1, Math.min(5, level | 0));
+  return new Uint8Array([H, 0x03, 0x00, 0x00, mode, level, 0x00]);
+}
+
+const hex = u8 => Array.from(u8).map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+
+/* ============ 状态 ============ */
+let dev = null, chr = null;
+let currentCmd = null;      // 当前需要续命的包
+let keepTimer = null;
+let autoStopAt = 0;         // 定时停止时间戳
+let autoStopTimer = null;
+
+const $ = id => document.getElementById(id);
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+  const lines = $('log').textContent.split('\n');
+  const next = [`${t}  ${msg}`, ...lines].slice(0, 22);
+  $('log').textContent = next.join('\n');
+}
+
+function setStatus(msg, cls) {
+  const el = $('status');
+  el.textContent = msg;
+  el.className = cls || '';
+  $('liveDot').className = 'live' + (cls === 'on' ? ' on' : '');
+}
+
+/* ============ 写入 ============ */
+async function write(u8) {
+  if (!chr) return false;
+  try {
+    await chr.writeValueWithoutResponse(u8);
+    return true;
+  } catch (e) {
+    try {
+      await chr.writeValue(u8);
+      return true;
+    } catch (e2) {
+      log('✗ 写入失败: ' + e2.message);
+      return false;
+    }
+  }
+}
+
+/* ============ 续命循环 ============ */
+function startKeepalive(u8) {
+  currentCmd = u8;
+  if (keepTimer) return;
+  keepTimer = setInterval(async () => {
+    if (!currentCmd) return;
+    await write(currentCmd);
+    log('↻ 续命 ' + hex(currentCmd));
+  }, KEEPALIVE_MS);
+  log('续命已启动 @' + KEEPALIVE_MS + 'ms');
+}
+
+function stopKeepalive() {
+  currentCmd = null;
+  if (keepTimer) { clearInterval(keepTimer); keepTimer = null; log('续命已停止'); }
+  if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null; }
+}
+
+/* ============ 高层操作 ============ */
+async function setStrength(pct, durationSec) {
+  if (!chr) { setStatus('未连接', 'err'); return; }
+  pct = Math.max(0, Math.min(100, pct));
+  if (pct === 0) { await stop(); return; }
+  const v = Math.round(pct * 255 / 100);
+  const u8 = cmdScale(v);
+  log(`📳 强度 ${pct}% → ${hex(u8)}`);
+  const ok = await write(u8);
+  if (ok) {
+    startKeepalive(u8);
+    $('valNum').textContent = pct;
+    $('slider').value = pct;
+    setStatus(`运行中 · 强度 ${pct}%` + (durationSec ? ` · ${durationSec}s 后停` : ''), 'on');
+    if (durationSec) {
+      if (autoStopTimer) clearTimeout(autoStopTimer);
+      autoStopTimer = setTimeout(() => { log('⏱ 到时自动停'); stop(); }, durationSec * 1000);
+    }
+  }
+}
+
+async function setPattern(mode, level) {
+  if (!chr) { setStatus('未连接', 'err'); return; }
+  const u8 = cmdVibrate(mode, level);
+  log(`🌀 花样 ${mode} 档${level} → ${hex(u8)}`);
+  const ok = await write(u8);
+  if (ok) {
+    startKeepalive(u8);
+    setStatus(`运行中 · 花样 ${mode} 档 / 强度 ${level}`, 'on');
+  }
+}
+
+async function stop() {
+  const u8 = cmdScaleStop();
+  log(`⏹ 停止 → ${hex(u8)}`);
+  stopKeepalive();
+  await write(u8);
+  $('valNum').textContent = 0;
+  $('slider').value = 0;
+  setStatus('已停止', 'on');
+}
+
+/* ============ 连接 ============ */
+$('btnConnect').onclick = async () => {
+  if (!navigator.bluetooth) {
+    setStatus('此浏览器不支持 Web Bluetooth。请用 Android Chrome / Edge。', 'err');
+    return;
+  }
+  try {
+    setStatus('正在扫描…请在弹窗里选 SL278H');
+    dev = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: 'SL278' }],
+      optionalServices: [SVC_WRITE]
+    }).catch(() => navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [SVC_WRITE]
+    }));
+
+    log('设备: ' + (dev.name || '(无名)') + ' · ' + dev.id);
+    setStatus('正在连接 GATT…');
+
+    dev.addEventListener('gattserverdisconnected', () => {
+      chr = null;
+      stopKeepalive();
+      $('btnConnect').disabled = false;
+      $('btnDisconnect').disabled = true;
+      $('btnPanic').disabled = true;
+      setStatus('连接已断开', 'err');
+      log('GATT 断开');
+    });
+
+    const server = await dev.gatt.connect();
+    setStatus('已连 GATT，查找 FFE0…');
+    const svc = await server.getPrimaryService(SVC_WRITE);
+    chr = await svc.getCharacteristic(CHR_WRITE);
+
+    log(`FFE1 属性: write=${!!chr.properties.write} noResp=${!!chr.properties.writeWithoutResponse}`);
+    setStatus('已连接 · FFE0/FFE1 就绪', 'on');
+    $('btnConnect').disabled = true;
+    $('btnDisconnect').disabled = false;
+    $('btnPanic').disabled = false;
+
+    // 尝试订阅 FFE2 回包
+    try {
+      const noti = await svc.getCharacteristic(CHR_NOTIFY);
+      await noti.startNotifications();
+      noti.addEventListener('characteristicvaluechanged', ev => {
+        log('← FFE2 ' + hex(new Uint8Array(ev.target.value.buffer)));
+      });
+      log('已订阅 FFE2 通知');
+    } catch (e) {
+      log('FFE2 订阅失败（不影响控制）: ' + e.message);
+    }
+  } catch (e) {
+    log('✗ ' + e.message);
+    setStatus('连接失败：' + e.message, 'err');
+  }
+};
+
+$('btnDisconnect').onclick = async () => {
+  await stop();
+  if (dev && dev.gatt.connected) dev.gatt.disconnect();
+};
+
+$('btnPanic').onclick = () => stop();
+
+/* ============ 滑块 ============ */
+const slider = $('slider');
+let slideTimer = null;
+slider.addEventListener('input', () => {
+  $('valNum').textContent = slider.value;
+});
+slider.addEventListener('change', () => {
+  // 拖动结束才发，避免每秒几十包
+  setStrength(parseInt(slider.value));
+});
+
+/* ============ 快捷强度 ============ */
+document.querySelectorAll('[data-p]').forEach(b => {
+  b.onclick = () => setStrength(parseInt(b.dataset.p));
+});
+
+/* ============ 花样按钮 ============ */
+let curLevel = 3;
+const pg = $('patternGrid');
+for (let i = 1; i <= 8; i++) {
+  const b = document.createElement('button');
+  b.textContent = i;
+  b.onclick = () => setPattern(i, curLevel);
+  pg.appendChild(b);
+}
+const lg = $('levelGrid');
+for (let i = 1; i <= 5; i++) {
+  const b = document.createElement('button');
+  b.textContent = i;
+  if (i === curLevel) b.style.background = '#1c7a45';
+  b.onclick = () => {
+    curLevel = i;
+    [...lg.children].forEach((x, idx) => x.style.background = idx + 1 === i ? '#1c7a45' : '');
+    log('花样档位 → ' + i);
+  };
+  lg.appendChild(b);
+}
+
+/* ============ 防息屏 ============ */
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      log('✅ 已申请屏幕常亮');
+      wakeLock.addEventListener('release', () => log('⚠️ 屏幕常亮已释放'));
+    }
+  } catch (e) { log('常亮申请失败: ' + e.message); }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !wakeLock) requestWakeLock();
+});
+requestWakeLock();
+
+log('页面就绪 · 协议已载入（SL278H / 7字节 / 无CRC）');
+</script>
+</body>
+</html>
